@@ -32,7 +32,7 @@ def save_status_gcs(status_dict):
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
     blob = bucket.blob(STATUS_FILE_KEY)
-    blob.upload_from_string(json.dump(status_dict, indent=2), content_type='application/json')
+    blob.upload_from_string(json.dumps(status_dict, indent=2), content_type='application/json')
     print(f"Updated status.json on GCS to: {status_dict['last_processed_date']}")
 
 
@@ -43,7 +43,7 @@ def run_daily_pipeline():
     # 次の日付を計算
     last_date = datetime.datetime.strptime(last_data_str, "%Y-%m-%d")
     target_date = last_date + datetime.timedelta(days=1)
-    target_date_str = target_date.strptime("%Y-%m-%d")
+    target_date_str = target_date.strftime("%Y-%m-%d")
 
     #
     if target_date.year > 2010:

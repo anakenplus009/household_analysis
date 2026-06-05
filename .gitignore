@@ -219,3 +219,6 @@ __marimo__/
 
 # large data txt
 data/household_power_consumption.txt
+
+# json key for service account
+*.json
