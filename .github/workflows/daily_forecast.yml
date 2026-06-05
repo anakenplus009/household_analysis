@@ -1,0 +1,36 @@
+name: Daily Power Consumption Forecast Pipeline
+
+on:
+  schedule:
+    - cron: '0 15 * * *' # 毎日日本時間 AM 0:00
+  workflow_dispatch: # 手動実行ボタン
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    # Google Cloud認証のための設定ステップ
+    - name: Authenticate to Google Cloud
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Run Pipeline Script
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        python src/daily_pipeline.py
