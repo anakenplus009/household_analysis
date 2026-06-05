@@ -255,7 +255,7 @@ if not api_key:
 
 # 2. Gemini クライアントの初期化
 # 引数を空にすると、自動的に環境変数「GEMINI_API_KEY」を参照します
-client = genai.Client()
+# client = genai.Client()
 
 
 def generate_advice(prediction_value):
