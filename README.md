@@ -8,8 +8,62 @@
 - **背景:** 伝統的な時系列モデル（ARIMA等）では捉えきれない長期依存関係をLSTM/Transformerでモデル化。
 
 ## 2. システム構成図（Architecture）
-- [ここにMermaidコード、または構成図の画像リンクを配置]
-- ※データの収集(Ingest) -> 蓄積(Store) -> 変換(Transform) -> 学習/予測(ML) -> 意思決定(LLM)の流れを説明。
+```mermaid
+flowchart TD
+    %% スタイル定義
+    classDef source fill:#ECEFF1,stroke:#37474F,stroke-width:2px;
+    classDef de fill:#E3F2FD,stroke:#0D47A1,stroke-width:2px;
+    classDef ml fill:#F3E5F5,stroke:#4A148C,stroke-width:2px;
+    classDef cicd fill:#FFFDE7,stroke:#F57F17,stroke-width:2px;
+    classDef insight fill:#E0F7FA,stroke:#006064,stroke-width:2px;
+
+    subgraph Data_Sources [1. Data Sources]
+        UCI[UCI Web Repository<br>household_power_consumption.txt]:::source
+    end
+
+    subgraph Data_Pipeline ["2. Data Engineering Pipeline (GCP)"]
+        GCS[(Cloud Storage<br>Raw Data Bucket)]:::de
+        CloudRun[Cloud Run<br>Pre-processing & Clean<br>1-hour Resampling & Imputation]:::de
+        BQ[(BigQuery<br>Cleaned Feature Store)]:::de
+    end
+
+    subgraph CICD_Automation [CI/CD & MLOps Automation]
+        GHA[GitHub Actions<br>CI/CD Trigger & Push]:::cicd
+    end
+
+    subgraph ML_AI_Phase ["3. Machine Learning & AI (Vertex AI)"]
+        VAP[Vertex AI Pipelines<br>Orchestration]:::ml
+        VAW[Vertex AI Workbench<br>JupyterLab / EDA & Prototyping]:::ml
+        VAT[Vertex AI Training<br>Python Scripts: train.py<br>Model: Transformer]:::ml
+        VAMR[Vertex AI Model Registry<br>Version Control]:::ml
+        VAE[Vertex AI Endpoint<br>Online Inference / predict.py]:::ml
+    end
+
+    subgraph Insights [4. Insights & Consumption]
+        Gemini["Gemini API (LLM)"<br>Generative Text:<br>Actionable Energy Advice]:::insight
+        Dashboard[Looker Studio / Streamlit<br>Interactive Dashboard]:::insight
+    end
+
+    %% データと処理の流れ
+    UCI -->|Upload| GCS
+    GCS -->|Trigger| CloudRun
+    CloudRun -->|Load| BQ
+    
+    %% CI/CDと学習の自動化フロー
+    GHA -->|Deploy Pipeline| VAP
+    VAP -->|Execute Script| VAT
+    BQ -->|Fetch Training Data| VAT
+    VAW -.->|Push Code to GitHub| GHA
+    
+    VAT -->|Register Model| VAMR
+    VAMR -->|Deploy| VAE
+    
+    %% 推論と可視化の流れ
+    VAE -->|Inference Output| Gemini
+    VAE -->|Predictions| Dashboard
+    Gemini -->|Natural Language Reports| Dashboard
+```
+- データの収集(Ingest) -> 蓄積(Store) -> 変換(Transform) -> 学習/予測(ML) -> 意思決定(LLM)の流れを説明。
 
 ## 3. 技術スタック（Tech Stack）
 - **言語:** Python 3.12+
