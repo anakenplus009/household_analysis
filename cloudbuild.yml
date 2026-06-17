@@ -1,0 +1,8 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/noted-cortex-460601-c3/run-repo/daily-inference-job', '.']
+images:
+- 'asia-northeast1-docker.pkg.dev/noted-cortex-460601-c3/run-repo/daily-inference-job'
+serviceAccount: 'projects/noted-cortex-460601-c3/serviceAccounts/power-run-sa@noted-cortex-460601-c3.iam.gserviceaccount.com'
+options:
+  logging: CLOUD_LOGGING_ONLY

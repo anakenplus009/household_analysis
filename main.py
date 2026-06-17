@@ -7,8 +7,7 @@ import torch
 import torch.nn as nn
 from sklearn.preprocessing import MinMaxScaler
 from google.cloud import storage
-import google.generativeai as genai
-from dotenv import load_dotenv
+from google import genai
 
 # ========== 設定周り ==========
 BUCKET_NAME = "household-electic-data-20260501"
@@ -18,7 +17,7 @@ STATUS_FILE_KEY = "database/status.json"
 MODEL_WEIGHTS_BLOB = "models/transformer_weights.pth"
 LOCAL_WEIGHTS_PATH = "/tmp/transformer_weights.pth"
 
-load_dotenv()
+
 api_key = os.getenv("GEMINI_API_KEY")
 
 # ========== クラス定義 (推論のために構造のみ必要) ==========
@@ -63,8 +62,7 @@ def download_model_weights():
 
 def generate_advice(prediction_values, api_key):
     if not api_key: return "エラー: GEMINI_API_KEY が設定されていません。"
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    client = genai.Client(api_key=api_key)
     
     mean_pred = np.mean(prediction_values)
     max_pred = np.max(prediction_values)
@@ -79,7 +77,10 @@ def generate_advice(prediction_values, api_key):
     - 100文字以内。
     """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-3.1-flash',
+            contents=prompt
+        )
         return response.text
     except Exception as e:
         return f"APIエラー: {e}"
@@ -110,6 +111,13 @@ def run_daily_inference():
     # 2. 直近データの前処理
     df = updated_history_df.copy()
     df['DateTime'] = pd.to_datetime(df['Date'].astype(str) + ' ' + df['Time'].astype(str))
+    # 不要になった文字列の列削除
+    df = df.drop(columns=['Date', 'Time'])
+
+    # 文字列('?'など)が存在している対策
+    #　DateTime以外を数値型に変換(エラー時はNaN)
+    numeric_cols = df.columns.drop('DateTime')
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
     df_cleaned = df.interpolate(method='linear', limit_direction='both')
 
     df_hourly = df_cleaned.set_index('DateTime').resample('h').agg({
@@ -126,6 +134,14 @@ def run_daily_inference():
     df_hourly['is_weekend'] = df_hourly.index.dayofweek.isin([5,6]).astype(int)
 
     df_final = df_hourly.dropna()
+
+    # --- 追加: データ行数チェック ---
+    if len(df_final) == 0:
+        print(f"スキップ: 予測に必要なデータが蓄積されていません（現在の有効な時間数: {len(df_hourly)}h）")
+        print("最低でも数日分のデータがhistory.csvに蓄積されるまで推論を待機します。")
+        return # ここで処理を安全に終了させる
+    # --------------------------------
+
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(df_final) # ※厳密には学習時のscalerの再利用が推奨されます
 
@@ -167,4 +183,6 @@ def run_daily_inference():
     print(f"パイプライン完了: {target_date_str}")
 
 if __name__ == "__main__":
+    print("--- Cloud Run Job: 日次推論パイプラインを開始します ---")
     run_daily_inference()
+    print("--- Cloud Run Job: 全ての処理が完了しました ---")
